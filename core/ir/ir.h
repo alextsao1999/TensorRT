@@ -22,7 +22,8 @@ struct Device {
   int64_t gpu_id;
   int64_t dla_core;
   bool allow_gpu_fallback;
-  Device() : device_type(nvinfer1::DeviceType::kGPU), gpu_id(0), dla_core(0), allow_gpu_fallback(false) {}
+  bool allow_capture_graph;
+  Device() : device_type(nvinfer1::DeviceType::kGPU), gpu_id(0), dla_core(0), allow_gpu_fallback(false), allow_capture_graph(false) {}
 };
 
 struct Input : torch::CustomClassHolder {

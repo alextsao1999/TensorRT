@@ -74,6 +74,25 @@ std::vector<at::Tensor> execute_engine(std::vector<at::Tensor> inputs, c10::intr
     LOG_INFO("" << log_info);
   }
 
+  if (compiled_engine->cuda_graph_exec) {
+    for (int i = 0; i < inputs.size(); ++i) {
+      if (inputs[i].sizes() != compiled_engine->static_inputs[i].sizes()) {
+        compiled_engine->cuda_graph_exec = nullptr;
+      }
+    }
+  }
+
+  if (compiled_engine->cuda_graph_exec) {
+    LOG_DEBUG("Inference by replaying cuda graph");
+    c10::cuda::CUDAStream stream = c10::cuda::getCurrentCUDAStream(inputs[0].device().index());
+    for (int i = 0; i < inputs.size(); ++i) {
+      compiled_engine->static_inputs[i].copy_(inputs[i]);
+    }
+    TORCHTRT_CHECK(cudaGraphLaunch(*compiled_engine->cuda_graph_exec, stream) == cudaSuccess, 
+      "Failed to destroy the cuda graph.");
+    return compiled_engine->static_outputs;
+  }
+
   {
     std::unique_ptr<torch::autograd::profiler::RecordProfile> device_profiler_guard;
     if (compiled_engine->profile_execution) {
@@ -118,6 +137,8 @@ std::vector<at::Tensor> execute_engine(std::vector<at::Tensor> inputs, c10::intr
                      << "warning persists.");
         *in = in->to(torch::Device(target_device));
       }
+
+      compiled_engine->static_inputs = inputs;
     }
   }
 
@@ -147,7 +168,8 @@ std::vector<at::Tensor> execute_engine(std::vector<at::Tensor> inputs, c10::intr
         compiled_engine->exec_ctx->allInputShapesSpecified(), "Not enough inputs provided (runtime.RunCudaEngine)");
   }
 
-  std::vector<at::Tensor> outputs(compiled_engine->num_io.second);
+  std::vector<at::Tensor> &outputs = compiled_engine->static_outputs;
+  outputs.resize(compiled_engine->num_io.second);
   {
     std::unique_ptr<torch::autograd::profiler::RecordProfile> output_profiler_guard;
     if (compiled_engine->profile_execution) {
@@ -175,6 +197,10 @@ std::vector<at::Tensor> execute_engine(std::vector<at::Tensor> inputs, c10::intr
     }
     c10::cuda::CUDAStream stream = c10::cuda::getCurrentCUDAStream(inputs[0].device().index());
 
+    if (compiled_engine->device_info.allow_capture_graph) {
+      cudaStreamSynchronize(stream);
+      auto cuerr = cudaStreamBeginCapture(stream, cudaStreamCaptureModeRelaxed);
+    }
     // nvinfer1::IExecutionContext::enqueue is not thread safe and we need a mutex for it.
     std::unique_lock<std::mutex> lock(compiled_engine->mu);
     compiled_engine->exec_ctx->enqueueV3(stream);
@@ -182,6 +208,16 @@ std::vector<at::Tensor> execute_engine(std::vector<at::Tensor> inputs, c10::intr
       LOG_INFO(std::endl << *compiled_engine->trt_engine_profiler);
       dump_trace(compiled_engine->trt_engine_profile_path, *compiled_engine->trt_engine_profiler);
       compiled_engine->dump_engine_layer_info();
+    }
+
+    if (compiled_engine->device_info.allow_capture_graph) {
+      compiled_engine->cuda_graph_exec = std::make_unique<cudaGraphExec_t>();
+      cudaGraph_t graph;
+      TORCHTRT_CHECK(cudaStreamEndCapture(stream, &graph) == cudaSuccess, 
+        "Failed to capture cuda graph");
+      TORCHTRT_CHECK(cudaGraphInstantiate(compiled_engine->cuda_graph_exec.get(), graph, NULL, NULL, 0) == cudaSuccess,
+        "Failed to instantiate cuda graph");
+      TORCHTRT_CHECK(cudaGraphDestroy(graph), "Failed to destroy the cuda graph.");
     }
   }
   return outputs;

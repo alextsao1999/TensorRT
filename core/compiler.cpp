@@ -168,7 +168,7 @@ partitioning::GraphAndMapping BuildHybridGraph(
         auto engine = conversion::ConvertBlockToEngine(seg_block.block(), convert_info, static_params);
         auto temp_g = std::make_shared<torch::jit::Graph>();
         auto device_spec = convert_info.engine_settings.device;
-        auto cuda_device = runtime::RTDevice(device_spec.gpu_id, device_spec.device_type);
+        auto cuda_device = runtime::RTDevice(device_spec.gpu_id, device_spec.device_type, device_spec.allow_capture_graph);
         AddEngineToGraph(
             new_mod,
             temp_g,

@@ -13,8 +13,10 @@ struct RTDevice {
   nvinfer1::DeviceType device_type;
   std::string device_name;
 
+  bool allow_capture_graph = false;
+
   RTDevice();
-  RTDevice(int64_t gpu_id, nvinfer1::DeviceType device_type);
+  RTDevice(int64_t gpu_id, nvinfer1::DeviceType device_type, bool allow_capture_graph = false);
   RTDevice(std::string serialized_device_info);
   ~RTDevice() = default;
   RTDevice(const RTDevice& other) = default;

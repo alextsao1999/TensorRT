@@ -114,6 +114,7 @@ torchtrt::core::CompileSpec to_internal_compile_spec(CompileSpec external) {
   internal.convert_info.engine_settings.device.allow_gpu_fallback = external.device.allow_gpu_fallback;
   internal.lower_info.target_device.allow_gpu_fallback = external.device.allow_gpu_fallback;
   internal.partitioning_info.target_device.allow_gpu_fallback = external.device.allow_gpu_fallback;
+  internal.partitioning_info.target_device.allow_capture_graph = external.device.allow_capture_graph;
 
   TORCHTRT_CHECK(
       !(external.require_full_compilation && (external.torch_executed_ops.size() > 0)),

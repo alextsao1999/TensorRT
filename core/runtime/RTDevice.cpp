@@ -9,11 +9,11 @@ namespace runtime {
 
 const std::string DEVICE_INFO_DELIM = "%";
 
-typedef enum { ID_IDX = 0, SM_MAJOR_IDX, SM_MINOR_IDX, DEVICE_TYPE_IDX, DEVICE_NAME_IDX } SerializedDeviceInfoIndex;
+typedef enum { ID_IDX = 0, ALLOW_CAPTURE_GRAPH_IDX, SM_MAJOR_IDX, SM_MINOR_IDX, DEVICE_TYPE_IDX, DEVICE_NAME_IDX } SerializedDeviceInfoIndex;
 
-RTDevice::RTDevice() : id{-1}, major{-1}, minor{-1}, device_type{nvinfer1::DeviceType::kGPU} {}
+RTDevice::RTDevice() : id{-1}, major{-1}, minor{-1}, device_type{nvinfer1::DeviceType::kGPU}, allow_capture_graph{false} {}
 
-RTDevice::RTDevice(int64_t gpu_id, nvinfer1::DeviceType device_type) {
+RTDevice::RTDevice(int64_t gpu_id, nvinfer1::DeviceType device_type, bool allow_capture_graph) {
   RTDevice cuda_device;
   cudaDeviceProp device_prop;
 
@@ -36,6 +36,9 @@ RTDevice::RTDevice(int64_t gpu_id, nvinfer1::DeviceType device_type) {
 
   // Set Device Type
   this->device_type = device_type;
+
+  // Set capture graph
+  this->allow_capture_graph = allow_capture_graph;
 }
 
 // NOTE: Serialization Format for Device Info:
@@ -57,6 +60,7 @@ RTDevice::RTDevice(std::string device_info) {
 
   TORCHTRT_CHECK(tokens.size() == DEVICE_NAME_IDX + 1, "Unable to deserializable program target device infomation");
 
+  allow_capture_graph = std::stoi(tokens[ALLOW_CAPTURE_GRAPH_IDX]);
   id = std::stoi(tokens[ID_IDX]);
   major = std::stoi(tokens[SM_MAJOR_IDX]);
   minor = std::stoi(tokens[SM_MINOR_IDX]);
@@ -72,6 +76,7 @@ RTDevice& RTDevice::operator=(const RTDevice& other) {
   minor = other.minor;
   device_type = other.device_type;
   device_name = other.device_name;
+  allow_capture_graph = other.allow_capture_graph;
   return (*this);
 }
 
@@ -84,6 +89,7 @@ std::string RTDevice::serialize() {
   content[SM_MINOR_IDX] = std::to_string(minor);
   content[DEVICE_TYPE_IDX] = std::to_string((int64_t)device_type);
   content[DEVICE_NAME_IDX] = device_name;
+  content[ALLOW_CAPTURE_GRAPH_IDX] = std::to_string(allow_capture_graph);
 
   std::stringstream ss;
   for (size_t i = 0; i < content.size() - 1; i++) {

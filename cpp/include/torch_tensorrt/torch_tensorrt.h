@@ -252,6 +252,11 @@ struct Device {
   bool allow_gpu_fallback;
 
   /**
+   * Allow cuda graph capture.
+   */
+  bool allow_capture_graph = false;
+
+  /**
    * Constructor for Device structure
    */
   Device() : device_type(DeviceType::kGPU), gpu_id(0), dla_core(0), allow_gpu_fallback(false) {}

@@ -20,6 +20,7 @@ std::ostream& operator<<(std::ostream& os, const BuilderSettings& s) {
        << "\n    Debuggable Engine: " << s.debug                                           \
        << "\n    GPU ID: " << s.device.gpu_id                                              \
        << "\n    Allow GPU Fallback (if running on DLA): " << s.device.allow_gpu_fallback  \
+       << "\n    Allow GPU capture cuda graph: " << s.device.allow_capture_graph           \
        << "\n    Avg Timing Iterations: " << s.num_avg_timing_iters                        \
        << "\n    Max Workspace Size: " << s.workspace_size                                 \
        << "\n    DLA SRAM Size: " << s.dla_sram_size                                       \

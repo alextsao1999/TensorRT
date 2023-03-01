@@ -1,4 +1,5 @@
 #pragma once
+#include "ATen/Tensor.h"
 #include <experimental/filesystem>
 #include <map>
 #include <memory>
@@ -21,6 +22,12 @@ struct TRTEngine : torch::CustomClassHolder {
   std::shared_ptr<nvinfer1::IRuntime> rt;
   std::shared_ptr<nvinfer1::ICudaEngine> cuda_engine;
   std::shared_ptr<nvinfer1::IExecutionContext> exec_ctx;
+
+  std::vector<at::Tensor> static_inputs;
+  std::vector<at::Tensor> static_outputs;
+  std::unique_ptr<cudaGraph_t> cuda_graph;
+  std::unique_ptr<cudaGraphExec_t> cuda_graph_exec;
+
   std::pair<uint64_t, uint64_t> num_io;
   std::string name;
   RTDevice device_info;
